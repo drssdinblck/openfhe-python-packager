@@ -2,6 +2,12 @@ import os
 import subprocess
 import sys
 from setuptools import setup, find_packages
+from setuptools.dist import Distribution
+
+class BinaryDistribution(Distribution):
+    """Force setuptools to treat this distribution as containing native code."""
+    def has_ext_modules(self):
+        return True
 
 def get_ci_vars(filepath):
     ci_vars = {}
@@ -59,5 +65,6 @@ setup(
         # add other classifiers as needed
     ],
     zip_safe=False,
+    distclass=BinaryDistribution,
 )
 

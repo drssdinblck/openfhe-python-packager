@@ -24,6 +24,25 @@ OPENFHE_CMAKE_ARGS=${OPENFHE_CMAKE_ARGS}" -DBUILD_BENCHMARKS=OFF -DBUILD_UNITTES
 # OPENFHE_CMAKE_ARGS=${OPENFHE_CMAKE_ARGS}" -DWITH_OPENMP=OFF"
 
 clone ${OPENFHE_REPO} ${OPENFHE_DIR}
+
+### optionally overlay the Intel HEXL backend onto openfhe-development
+if [ "${BUILD_HEXL}" = "ON" ]; then
+  separator
+  echo "BUILD_HEXL=ON - staging Intel HEXL overlay"
+  separator
+
+  OPENFHE_HEXL_DIR="${BUILD_DIR}/openfhe-hexl"
+  clone "${OPENFHE_HEXL_REPO}" "${OPENFHE_HEXL_DIR}"
+
+  # check out the matching tags so the overlay lands on the intended source tree
+  checkout_tag "${OPENFHE_DIR}" "${OPENFHE_TAG}"
+  checkout_tag "${OPENFHE_HEXL_DIR}" "${OPENFHE_HEXL_TAG}"
+
+  overlay_hexl "${OPENFHE_HEXL_DIR}" "${OPENFHE_DIR}"
+
+  OPENFHE_CMAKE_ARGS=${OPENFHE_CMAKE_ARGS}" -DWITH_INTEL_HEXL=ON"
+fi
+
 build_install_tag_with_args ${OPENFHE_DIR} ${OPENFHE_TAG} "${OPENFHE_CMAKE_ARGS}" ${PARALELLISM}
 
 ### build openfhe-python

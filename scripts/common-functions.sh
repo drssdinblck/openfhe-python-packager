@@ -31,6 +31,47 @@ clone()
   cd ..
 }
 
+# Check out a specific tag/branch in an already-cloned repository. Idempotent:
+# safe to call before build_install_tag_with_args (which also checks out the tag).
+checkout_tag()
+{
+  DIR=$1
+  TAG=$2
+  separator
+  echo "checkout $DIR tag $TAG"
+  separator
+  cd "$DIR" || abort "checkout_tag: unable to cd into $DIR"
+    git checkout "$TAG" || abort "checkout_tag: unable to checkout $DIR tag $TAG"
+  cd - > /dev/null || abort "checkout_tag: unable to return from $DIR"
+}
+
+# Overlay the openfhe-hexl sources onto a staged openfhe-development tree to
+# produce a HEXL-enabled build. Mirrors the staging performed by
+# openfhe-configurator (openfhe-hexl ships replacement/addition files that are
+# copied over openfhe-development before building).
+overlay_hexl()
+{
+  HEXL_SRC=$1    # path to the checked-out openfhe-hexl tree
+  OPENFHE_DST=$2 # path to the staged openfhe-development tree
+
+  [ -d "$HEXL_SRC" ] || abort "overlay_hexl: openfhe-hexl source $HEXL_SRC not found"
+  [ -d "$OPENFHE_DST" ] || abort "overlay_hexl: openfhe-development tree $OPENFHE_DST not found"
+
+  separator
+  echo "overlay openfhe-hexl ($HEXL_SRC) onto openfhe-development ($OPENFHE_DST)"
+  separator
+
+  # Files and directories openfhe-hexl overlays onto openfhe-development.
+  for item in CMakeLists.txt CMakeLists.User.txt OpenFHEConfig.cmake.in \
+              benchmark configure src third-party; do
+    if [ -e "$HEXL_SRC/$item" ]; then
+      cp -R "$HEXL_SRC/$item" "$OPENFHE_DST/" || abort "overlay_hexl: failed to copy $item"
+    else
+      echo "overlay_hexl: WARNING - $item not present in openfhe-hexl, skipping"
+    fi
+  done
+}
+
 # ATTN: get_install_path MUST NOT print anything else, but ${INSTALL_PATH} !!!
 get_install_path()
 {
@@ -108,10 +149,19 @@ build_install_tag_with_args()
 
   cd $DIR || abort "unable to cd into $DIR"
     if [ ! -d build ]; then
-      separator
-      echo "checkout $DIR tag $TAG"
-      separator
-      git checkout $TAG || abort "unable to checkout $DIR tag $TAG"
+      # Skip the checkout if HEAD is already at the requested tag. This matters
+      # for the HEXL overlay path, where the tag is checked out and overlay files
+      # are copied in beforehand; a redundant `git checkout` would revert them.
+      if [ "$(git rev-parse --verify HEAD)" = "$(git rev-parse --verify "$TAG")" ]; then
+        separator
+        echo "$DIR already at tag $TAG, skipping checkout"
+        separator
+      else
+        separator
+        echo "checkout $DIR tag $TAG"
+        separator
+        git checkout $TAG || abort "unable to checkout $DIR tag $TAG"
+      fi
 
       mkdir build || abort "unable to create build dir in $DIR"
       cd build || abort "unable to cd into build dir in $DIR"

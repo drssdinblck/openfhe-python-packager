@@ -70,6 +70,28 @@ overlay_hexl()
       echo "overlay_hexl: WARNING - $item not present in openfhe-hexl, skipping"
     fi
   done
+
+  # The openfhe-hexl CMakeLists.txt hardcodes its own OPENFHE_VERSION_* (e.g. at
+  # tag v1.5.1.0 the patch is stale at 0, yielding version 1.5.0). Overlaying it
+  # downgrades the version openfhe-development reports, so the generated
+  # OpenFHEConfig.cmake no longer satisfies openfhe-python's
+  # find_package(OpenFHE <OPENFHE_TAG without v> REQUIRED) and no .so is built.
+  # Rewrite the version in the overlaid CMakeLists.txt to match OPENFHE_TAG.
+  # (OPENFHE_VERSION on the following line recomputes from these, and
+  # OpenFHEConfig.cmake.in consumes @OPENFHE_VERSION@, so only these need patching.)
+  OVERLAID_CMAKE="$OPENFHE_DST/CMakeLists.txt"
+  VERSION="${OPENFHE_TAG#v}"
+  V_MAJOR=$(echo "$VERSION" | cut -d. -f1)
+  V_MINOR=$(echo "$VERSION" | cut -d. -f2)
+  V_PATCH=$(echo "$VERSION" | cut -d. -f3)
+  if [ -n "$V_MAJOR" ] && [ -n "$V_MINOR" ] && [ -n "$V_PATCH" ]; then
+    echo "overlay_hexl: setting OPENFHE_VERSION to $V_MAJOR.$V_MINOR.$V_PATCH (from OPENFHE_TAG=$OPENFHE_TAG) in overlaid CMakeLists.txt"
+    sed -i "s|^set(OPENFHE_VERSION_MAJOR .*)|set(OPENFHE_VERSION_MAJOR ${V_MAJOR})|" "$OVERLAID_CMAKE" || abort "overlay_hexl: failed to patch OPENFHE_VERSION_MAJOR"
+    sed -i "s|^set(OPENFHE_VERSION_MINOR .*)|set(OPENFHE_VERSION_MINOR ${V_MINOR})|" "$OVERLAID_CMAKE" || abort "overlay_hexl: failed to patch OPENFHE_VERSION_MINOR"
+    sed -i "s|^set(OPENFHE_VERSION_PATCH .*)|set(OPENFHE_VERSION_PATCH ${V_PATCH})|" "$OVERLAID_CMAKE" || abort "overlay_hexl: failed to patch OPENFHE_VERSION_PATCH"
+  else
+    echo "overlay_hexl: WARNING - OPENFHE_TAG='$OPENFHE_TAG' did not yield a 3-component version; leaving overlaid CMakeLists.txt version unchanged"
+  fi
 }
 
 # ATTN: get_install_path MUST NOT print anything else, but ${INSTALL_PATH} !!!

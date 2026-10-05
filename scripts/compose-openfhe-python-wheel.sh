@@ -38,7 +38,7 @@ echo "OPENFHE_PYTHON module"
 INSTALL_PATH=$(get_install_path ${BUILD_DIR})
 echo "OPENFHE module"
 # add the python module to the wheel
-cp ${INSTALL_PATH}/*.so ${WHEEL_ROOT}/openfhe
+cp ${INSTALL_PATH}/*.so ${WHEEL_ROOT}/openfhe || abort "no openfhe python module (*.so) found in ${INSTALL_PATH}; the build likely failed"
 # add __init__.py to the wheel
 if [ "$OS_TYPE" = "Linux" ] && [ "$OS_NAME" = "Ubuntu" ] && [ "$OS_RELEASE" = "20.04" ]; then
 
@@ -70,10 +70,10 @@ fi
 # cp -r ${INSTALL_PATH}/lib/OpenFHE/ ${WHEEL_ROOT}/openfhe/lib
 if [ "$OS_TYPE" = "Linux" ]; then
     # add libOPENFHE*.so to the wheel
-    cp ${INSTALL_PATH}/lib/*.so.1 ${WHEEL_ROOT}/openfhe/lib
+    cp ${INSTALL_PATH}/lib/*.so.1 ${WHEEL_ROOT}/openfhe/lib || abort "no OpenFHE shared libraries (lib/*.so.1) found in ${INSTALL_PATH}; the build likely failed"
 elif [ "$OS_TYPE" = "Darwin" ]; then
     # add libOPENFHE*.dylib to the wheel
-    cp ${INSTALL_PATH}/lib/*.1.dylib ${WHEEL_ROOT}/openfhe/lib
+    cp ${INSTALL_PATH}/lib/*.1.dylib ${WHEEL_ROOT}/openfhe/lib || abort "no OpenFHE shared libraries (lib/*.1.dylib) found in ${INSTALL_PATH}; the build likely failed"
 fi
 # add ci-vars.sh as build-config.txt to the wheel for reference
 cp ${ROOT}/ci-vars.sh ${WHEEL_ROOT}/openfhe/build-config.txt
